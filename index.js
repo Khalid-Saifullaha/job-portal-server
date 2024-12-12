@@ -31,7 +31,11 @@ async function run() {
 
     // jobs related apis
     const jobsCollection = client.db("jobPortel").collection("jobs");
+    const jobApplicationCollection = client
+      .db("jobPortel")
+      .collection("job_applications");
 
+    // jobs related APIS
     app.get("/jobs", async (req, res) => {
       const cursor = jobsCollection.find();
       const result = await cursor.toArray();
@@ -42,6 +46,40 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await jobsCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post("/jobs", async (req, res) => {
+      const newJob = req.body;
+      const result = await jobsCollection.insertOne(newJob);
+      res.send(result);
+    });
+
+    // job application apis
+    app.get("/job-applications", async (req, res) => {
+      const email = req.query.email;
+      const query = { applicant_email: email };
+      const result = await jobApplicationCollection.find(query).toArray();
+
+      // fokira way to aggregate data
+      for (const application of result) {
+        console.log(application.job_id);
+        const query1 = { _id: new ObjectId(application.job_id) };
+        const job = await jobsCollection.findOne(query1);
+        if (job) {
+          application.title = job.title;
+          application.location = job.location;
+          application.company = job.company;
+          application.company_logo = job.company_logo;
+        }
+      }
+
+      res.send(result);
+    });
+
+    app.post("/job-applications", async (req, res) => {
+      const application = req.body;
+      const result = await jobApplicationCollection.insertOne(application);
       res.send(result);
     });
   } finally {
